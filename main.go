@@ -29,6 +29,36 @@ func main() {
 	}
 }
 
+func validateValue(input string) (float64, error) {
+	unit := input[len(input)-1:]
+
+	bytes := 0.0
+	inputString := ""
+	if _, err := strconv.ParseFloat(unit, 32); err == nil {
+		bytes = 1.0
+		inputString = input
+	} else {
+		inputString = input[:len(input)-1]
+		switch unit {
+		case "k", "K":
+			bytes = 1024
+		case "m", "M":
+			bytes = 1024 * 1024
+		case "g", "G":
+			bytes = 1024 * 1024 * 1024
+		default:
+			return 0, errors.New("invalid unit")
+		}
+	}
+
+	num, err := strconv.ParseFloat(inputString, 32)
+	if err != nil {
+		return 0, errors.New("invalid value")
+	}
+	value := num * bytes
+	return value, nil
+}
+
 var commandTxt = cli.Command{
 	Name:  "txt",
 	Usage: "make .txt file",
@@ -39,49 +69,18 @@ var commandTxt = cli.Command{
 		}
 
 		arg := c.Args().First()
-		unit := arg[len(arg)-1:]
 
-		bytes := 0.0
-		num := ""
-		if _, err := strconv.ParseFloat(unit,32); err == nil {
-			bytes = 1.0
-			num = arg
-		} else {
-			num = arg[:len(arg)-1]
-			switch unit {
-			case "k", "K":
-				bytes = 1024
-			case "m", "M":
-				bytes = 1024 * 1024
-			case "g", "G":
-				bytes = 1024 * 1024 * 1024
-			default:
-				return errors.New("invalid unit")
-			}
-		}
-
-		s, err := strconv.ParseFloat(num,32)
-		if err != nil {
-			return errors.New("invalid value")
-		}
-
-		count := s * bytes
-
-		fmt.Println("count")
-		fmt.Println(count)
-
-		fmt.Println("int count")
-		fmt.Println(int(count))
-
-		data := strings.Repeat("a", int(count))
-
-		path,err := filepath.Abs(c.Args().Get(1) + ".txt")
+		value, err := validateValue(arg)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("path")
-		fmt.Println(filepath.Abs(path))
+		data := strings.Repeat("a", int(value))
+
+		path, err := filepath.Abs(c.Args().Get(1) + ".txt")
+		if err != nil {
+			return err
+		}
 
 		file, err := os.Create(path)
 		if err != nil {
@@ -90,6 +89,8 @@ var commandTxt = cli.Command{
 		defer file.Close()
 
 		file.Write(([]byte)(data))
+
+		fmt.Println("save file to " + path)
 
 		return nil
 	},
